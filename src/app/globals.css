@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -44,8 +45,8 @@ body {
 
     --radius: 0.5rem;
 
-    /* Sidebar specific theme variables - can be adjusted if needed */
-    --sidebar-background: 250 80% 96%; /* Lighter lavender for sidebar */
+    /* Sidebar specific theme variables */
+    --sidebar-background: 250 70% 94%; /* Adjusted: Richer Light Lavender for sidebar */
     --sidebar-foreground: 250 15% 35%;
     --sidebar-primary: 256 90% 80%; /* Slightly more vibrant lavender for primary elements in sidebar */
     --sidebar-primary-foreground: 256 50% 25%;
@@ -56,10 +57,6 @@ body {
   }
 
   .dark {
-    /* For dark mode, we can invert or use a different palette. 
-       Keeping it simple for now, but this is where dark theme would go.
-       Example: a deep indigo/purple theme.
-    */
     --background: 250 20% 12%;
     --foreground: 250 80% 95%;
 
@@ -94,12 +91,13 @@ body {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
 
-    --sidebar-background: 250 20% 10%;
+    /* Sidebar specific theme variables for dark mode */
+    --sidebar-background: 250 20% 14%; /* Adjusted: Slightly Lighter Dark Purple/Gray for sidebar */
     --sidebar-foreground: 250 70% 90%;
     --sidebar-primary: 256 60% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 206 60% 65%;
-    --sidebar-accent-foreground: 250 70% 90%;
+    --sidebar-accent-foreground: 250 70% 90%; /* Matches text color for good contrast on accent */
     --sidebar-border: 250 20% 20%;
     --sidebar-ring: 256 70% 60%;
   }

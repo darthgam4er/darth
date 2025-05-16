@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { Home, BarChart3, Settings, Zap, Brain } from 'lucide-react';
@@ -10,7 +11,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <Sidebar collapsible="icon" variant="sidebar" className="border-r">
         <SidebarHeader className="p-4">
           <Link href="/study" className="flex items-center gap-2">
-            <Brain className="h-8 w-8 text-primary" />
+            <Brain className="h-8 w-8 text-sidebar-foreground" /> {/* Changed text-primary to text-sidebar-foreground */}
             <h1 className="text-2xl font-bold text-foreground group-data-[collapsible=icon]:hidden">FocusFlow</h1>
           </Link>
         </SidebarHeader>
