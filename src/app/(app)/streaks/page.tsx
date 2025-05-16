@@ -2,7 +2,6 @@
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Calendar } from '@/components/ui/calendar';
 import { format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { Zap, Award, Flame } from 'lucide-react';
@@ -99,25 +98,6 @@ export default function StreaksPage() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold mb-2">{longestStreak} days</div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Zap className="text-blue-500" />
-            Streak Calendar
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Calendar
-            mode="multiple"
-            selected={Object.keys(calendarData).map(dateStr => new Date(dateStr))}
-            className="w-full"
-            modifiers={{ streak: Object.keys(calendarData).map(dateStr => new Date(dateStr)) }}
-            modifiersClassNames={{ streak: 'bg-primary text-primary-foreground font-bold' }}
-            showOutsideDays
-            fixedWeeks
-          />
         </CardContent>
       </Card>
     </div>
