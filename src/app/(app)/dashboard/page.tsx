@@ -1,18 +1,21 @@
 
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react'; // Added React and useMemo
-import { BarChart3, Clock, Zap, Target, CheckCircle, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'; // Added ChevronLeft, ChevronRight
+import React, { useEffect, useState, useMemo } from 'react';
+import { BarChart3, Clock, Zap, Target, CheckCircle, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { TimerSettings, StudySession } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
-import { Calendar } from '@/components/ui/calendar'; // Added
-import type { DayContentProps } from 'react-day-picker'; // Added
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Added
-import { format } from 'date-fns'; // Added
-import { Button } from '@/components/ui/button'; // Added
-import { cn } from '@/lib/utils'; // Added
+import { Calendar } from '@/components/ui/calendar';
+import type { DayContentProps } from 'react-day-picker';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltipComponent } from 'recharts';
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+
 
 const DEFAULT_TIMER_SETTINGS: TimerSettings = {
   studyDuration: 60, shortBreakDuration: 10, longBreakDuration: 30, cyclesPerSuperBlock: 4,
@@ -27,7 +30,7 @@ interface AggregatedStats {
 }
 
 const aggregateStudyData = (logs: StudySession[]): AggregatedStats => {
-  const today = new Date().toDateString();
+  const todayString = new Date().toDateString();
   const oneWeekAgo = new Date();
   oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
@@ -44,7 +47,7 @@ const aggregateStudyData = (logs: StudySession[]): AggregatedStats => {
             console.warn("Invalid date in studyLog for aggregation:", log.startTime);
             return;
           }
-        if (logDate.toDateString() === today) {
+        if (logDate.toDateString() === todayString) {
           totalStudyTimeToday += log.durationMinutes;
           completedBlocksToday++;
         }
@@ -75,6 +78,7 @@ export default function DashboardPage() {
 
   const [dailyFocusData, setDailyFocusData] = useState<Record<string, number>>({});
   const [currentCalendarYear, setCurrentCalendarYear] = useState(new Date().getFullYear());
+  const [productivityChartData, setProductivityChartData] = useState<Array<{ date: string, studyTime: number }>>([]);
 
   useEffect(() => {
     setStats(aggregateStudyData(studyLog));
@@ -99,6 +103,43 @@ export default function DashboardPage() {
     });
     setDailyFocusData(data);
   }, [studyLog]);
+  
+  useEffect(() => {
+    const today = startOfDay(new Date());
+    // Ensure we get 7 distinct days even if today is early in the week for 'EEE' format
+    const referenceDayForInterval = subDays(today, 6); 
+    const lastSevenDaysInterval = eachDayOfInterval({
+      start: referenceDayForInterval,
+      end: today,
+    });
+
+    // Make sure we always have 7 days, even if interval is shorter due to edge cases
+    const dateEntries = lastSevenDaysInterval.slice(-7).map(day => ({
+      date: format(day, 'EEE'), // Format as Mon, Tue, etc.
+      studyTime: 0,
+      fullDate: format(day, 'yyyy-MM-dd') // for matching with log
+    }));
+
+
+    studyLog.forEach(log => {
+      if (log.type === 'study' && log.completed) {
+        try {
+          const logDate = startOfDay(new Date(log.startTime));
+          const logDateStr = format(logDate, 'yyyy-MM-dd');
+          
+          const dayData = dateEntries.find(d => d.fullDate === logDateStr);
+          if (dayData) {
+            dayData.studyTime += log.durationMinutes;
+          }
+        } catch (e) {
+          console.warn("Error processing date from studyLog for chart:", log.startTime, e);
+        }
+      }
+    });
+    
+    setProductivityChartData(dateEntries.map(({date, studyTime}) => ({date, studyTime})));
+  }, [studyLog]);
+
 
   const focusedDaysModifier = useMemo(() => {
     return Object.keys(dailyFocusData)
@@ -113,7 +154,6 @@ export default function DashboardPage() {
     const dateStr = format(date, 'yyyy-MM-dd');
     const focusTimeMinutes = dailyFocusData[dateStr];
 
-    // Render plain day number for days not in the currently displayed month
     if (date.getMonth() !== displayMonth.getMonth()) {
       return <>{format(date, 'd')}</>;
     }
@@ -140,6 +180,10 @@ export default function DashboardPage() {
   const dailyGoalProgress = settings.dailyGoalType === 'blocks' 
     ? (settings.dailyGoalValue > 0 ? (stats.completedBlocksToday / settings.dailyGoalValue) * 100 : 0)
     : (settings.dailyGoalValue > 0 ? (stats.totalStudyTimeToday / (settings.dailyGoalValue * 60)) * 100 : 0);
+
+  const showProductivityChart = productivityChartData.some(d => d.studyTime > 0);
+  const chartConfig = { studyTime: { label: "Study Time (min)", color: "hsl(var(--primary))" } };
+
 
   return (
     <div className="space-y-6">
@@ -212,12 +256,40 @@ export default function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Productivity Trends (Coming Soon)</CardTitle>
+          <CardTitle>Productivity Trends (Last 7 Days)</CardTitle>
           <CardDescription>Visual representation of your study patterns over time.</CardDescription>
         </CardHeader>
-        <CardContent className="h-64 flex items-center justify-center">
-          <p className="text-muted-foreground">Chart will be displayed here.</p>
-          <img data-ai-hint="productivity graph" src="https://placehold.co/600x300.png" alt="Placeholder graph" className="opacity-50" />
+        <CardContent className="pt-6 h-[350px]">
+          {showProductivityChart ? (
+            <ChartContainer config={chartConfig} className="h-full w-full">
+              <RechartsBarChart data={productivityChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }} accessibilityLayer>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                />
+                <YAxis
+                  dataKey="studyTime"
+                  tickFormatter={(value) => `${value}m`}
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  width={40}
+                />
+                <RechartsTooltipComponent
+                  cursor={{ fill: 'hsl(var(--muted))', radius: 'var(--radius)' }}
+                  content={<ChartTooltipContent indicator="bar" nameKey="date" />}
+                />
+                <Bar dataKey="studyTime" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+              </RechartsBarChart>
+            </ChartContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground text-center">Not enough data to display productivity trends yet. <br/>Log some completed study sessions!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
