@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -29,12 +28,13 @@ export default function StudyPage() {
   const [settings] = useLocalStorage<TimerSettings>('focusflow-settings', DEFAULT_TIMER_SETTINGS);
   const [breakActivities] = useLocalStorage<BreakActivity[]>('focusflow-break-activities', []);
   const [studyLog, setStudyLog] = useLocalStorage<StudySession[]>('focusflow-study-log', []);
-  
-  const [timeLeft, setTimeLeft] = useState(settings.studyDuration * 60);
-  const [isActive, setIsActive] = useState(false);
-  const [mode, setMode] = useState<'study' | 'short_break' | 'long_break'>('study');
-  const [currentSessionStartTime, setCurrentSessionStartTime] = useState<string | null>(null);
-  const [cyclesCompleted, setCyclesCompleted] = useState(0);
+
+  // Persist timer state in localStorage
+  const [timeLeft, setTimeLeft] = useLocalStorage<number>('focusflow-timer-timeLeft', settings.studyDuration * 60);
+  const [isActive, setIsActive] = useLocalStorage<boolean>('focusflow-timer-isActive', false);
+  const [mode, setMode] = useLocalStorage<'study' | 'short_break' | 'long_break'>('focusflow-timer-mode', 'study');
+  const [currentSessionStartTime, setCurrentSessionStartTime] = useLocalStorage<string | null>('focusflow-timer-sessionStart', null);
+  const [cyclesCompleted, setCyclesCompleted] = useLocalStorage<number>('focusflow-timer-cyclesCompleted', 0);
   const [currentBreakActivity, setCurrentBreakActivity] = useState<BreakActivity | null>(null);
   const [showWhyStuckDialog, setShowWhyStuckDialog] = useState(false);
   const [showCoinFlipDialog, setShowCoinFlipDialog] = useState(false); // State for coin flip dialog
@@ -116,19 +116,23 @@ export default function StudyPage() {
     }
   }, [mode, cyclesCompleted, settings, breakActivities, toast, setCurrentStreak, currentSessionStartTime, timeLeft, logSession]);
 
+  // Timer persistence: use absolute end time for accuracy across tabs
+  const [endTime, setEndTime] = useLocalStorage<number | null>('focusflow-timer-endTime', null);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prevTime) => prevTime - 1);
+    if (isActive && endTime) {
+      const interval = setInterval(() => {
+        const newTimeLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+        setTimeLeft(newTimeLeft);
+        if (newTimeLeft === 0) {
+          setIsActive(false);
+          setEndTime(null);
+          handleTimerEnd();
+        }
       }, 1000);
-    } else if (isActive && timeLeft === 0) {
-      handleTimerEnd();
+      return () => clearInterval(interval);
     }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isActive, timeLeft, handleTimerEnd]);
+  }, [isActive, endTime, handleTimerEnd, setTimeLeft, setIsActive, setEndTime]);
 
   useEffect(() => {
     if (!isActive) {
@@ -138,17 +142,27 @@ export default function StudyPage() {
     }
   }, [settings.studyDuration, settings.shortBreakDuration, settings.longBreakDuration, mode, isActive]);
 
-
   const toggleTimer = () => {
-    setIsActive(!isActive);
-    if (!isActive && !currentSessionStartTime) { // Starting timer
+    if (!isActive) { // Resuming
+      // Use the current timeLeft to set a new endTime
+      const newEndTime = Date.now() + timeLeft * 1000;
+      setEndTime(newEndTime);
+      if (!currentSessionStartTime) {
         setCurrentSessionStartTime(new Date().toISOString());
-    } else if (isActive && currentSessionStartTime) { // Pausing timer
+      }
+      setIsActive(true);
+    } else { // Pausing
+      setEndTime(null); // Stop the countdown
+      setIsActive(false);
+      // Do NOT reset timeLeft here; keep the current value
+      // Optionally, log the session as paused/incomplete if needed
+      if (currentSessionStartTime) {
         const durationSeconds = (mode === 'study' ? settings.studyDuration * 60 :
                                 mode === 'short_break' ? settings.shortBreakDuration * 60 :
                                 settings.longBreakDuration * 60) - timeLeft;
-        logSession(false, mode, durationSeconds, currentSessionStartTime); // Log paused session as incomplete
+        logSession(false, mode, durationSeconds, currentSessionStartTime);
         setCurrentSessionStartTime(null); // Reset, will be set again if resumed
+      }
     }
   };
 
@@ -159,6 +173,7 @@ export default function StudyPage() {
                                 settings.longBreakDuration * 60) - timeLeft;
         logSession(false, mode, durationSeconds, currentSessionStartTime);
     }
+    setEndTime(null);
     setIsActive(false);
     setMode('study');
     setTimeLeft(settings.studyDuration * 60);
@@ -184,6 +199,7 @@ export default function StudyPage() {
     // Immediately call handleTimerEnd logic, but make sure timeLeft is 0 so it logs full duration if skipped at end
     const wasActive = isActive;
     setTimeLeft(0); // Force timeLeft to 0 to signify end for logging in handleTimerEnd
+    setEndTime(null);
     handleTimerEnd();
     
     // Start the next phase immediately if it was active or if user wants to auto-start after skip
@@ -207,7 +223,6 @@ export default function StudyPage() {
                           mode === 'short_break' ? settings.shortBreakDuration * 60 :
                           settings.longBreakDuration * 60;
   const progressPercentage = currentDuration > 0 ? ((currentDuration - timeLeft) / currentDuration) * 100 : 0;
-
 
   const getQuickIntervention = () => {
     const interventions = [
@@ -254,7 +269,6 @@ export default function StudyPage() {
     toast({ title: "2-Minute Rule Activated!", description: "Just focus for 2 minutes." });
   };
 
-
   return (
     <div className="container mx-auto py-8 flex flex-col items-center">
       <Card className="w-full max-w-2xl shadow-xl">
@@ -265,8 +279,7 @@ export default function StudyPage() {
           <CardDescription className="text-lg">
             {cyclesCompleted >= settings.cyclesPerSuperBlock ? 
              `Super-Block ${Math.floor(cyclesCompleted / settings.cyclesPerSuperBlock)} - Block ${cyclesCompleted % settings.cyclesPerSuperBlock + 1}` :
-             `Block ${cyclesCompleted + 1}`
-            }
+             `Block ${cyclesCompleted + 1}`}
             {settings.cyclesPerSuperBlock > 0 && ` of ${settings.cyclesPerSuperBlock}`}
           </CardDescription>
         </CardHeader>
@@ -337,7 +350,6 @@ export default function StudyPage() {
               <Separator />
             </div>
           )}
-
 
           <div className="flex items-center space-x-2 text-lg">
             <Zap className="h-6 w-6 text-yellow-500" /> {/* Consider making color dynamic based on theme */}
