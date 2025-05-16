@@ -1,23 +1,28 @@
+
 "use client";
 
-import { useEffect, useState } from 'react';
-import { BarChart3, Clock, Zap, Target, CheckCircle, TrendingUp } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react'; // Added React and useMemo
+import { BarChart3, Clock, Zap, Target, CheckCircle, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react'; // Added ChevronLeft, ChevronRight
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { TimerSettings, StudySession } from '@/lib/types'; // Assuming StudySession type is defined for logs
+import { TimerSettings, StudySession } from '@/lib/types';
 import { Progress } from '@/components/ui/progress';
+import { Calendar } from '@/components/ui/calendar'; // Added
+import type { DayContentProps } from 'react-day-picker'; // Added
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // Added
+import { format } from 'date-fns'; // Added
+import { Button } from '@/components/ui/button'; // Added
+import { cn } from '@/lib/utils'; // Added
 
 const DEFAULT_TIMER_SETTINGS: TimerSettings = {
   studyDuration: 60, shortBreakDuration: 10, longBreakDuration: 30, cyclesPerSuperBlock: 4,
   dailyGoalType: 'blocks', dailyGoalValue: 8, enableNotifications: true, strictMode: false,
 };
 
-// Helper to aggregate study data - this would ideally be more sophisticated
-// For now, let's assume study logs are simple [{ type: 'study', duration: number, date: string }]
 interface AggregatedStats {
-  totalStudyTimeToday: number; // minutes
+  totalStudyTimeToday: number;
   completedBlocksToday: number;
-  weeklyStudyTime: number; // minutes
+  weeklyStudyTime: number;
   weeklyCompletedBlocks: number;
 }
 
@@ -33,14 +38,22 @@ const aggregateStudyData = (logs: StudySession[]): AggregatedStats => {
 
   logs.forEach(log => {
     if (log.type === 'study' && log.completed) {
-      const logDate = new Date(log.startTime);
-      if (logDate.toDateString() === today) {
-        totalStudyTimeToday += log.durationMinutes;
-        completedBlocksToday++;
-      }
-      if (logDate >= oneWeekAgo) {
-        weeklyStudyTime += log.durationMinutes;
-        weeklyCompletedBlocks++;
+      try {
+        const logDate = new Date(log.startTime);
+         if (isNaN(logDate.getTime())) {
+            console.warn("Invalid date in studyLog for aggregation:", log.startTime);
+            return;
+          }
+        if (logDate.toDateString() === today) {
+          totalStudyTimeToday += log.durationMinutes;
+          completedBlocksToday++;
+        }
+        if (logDate >= oneWeekAgo) {
+          weeklyStudyTime += log.durationMinutes;
+          weeklyCompletedBlocks++;
+        }
+      } catch (e) {
+        console.warn("Error processing date from studyLog for aggregation:", log.startTime, e);
       }
     }
   });
@@ -51,7 +64,7 @@ const aggregateStudyData = (logs: StudySession[]): AggregatedStats => {
 export default function DashboardPage() {
   const [settings] = useLocalStorage<TimerSettings>('focusflow-settings', DEFAULT_TIMER_SETTINGS);
   const [currentStreak] = useLocalStorage<number>('focusflow-streak', 0);
-  const [studyLog] = useLocalStorage<StudySession[]>('focusflow-study-log', []); // Assuming study logs are stored
+  const [studyLog] = useLocalStorage<StudySession[]>('focusflow-study-log', []);
   
   const [stats, setStats] = useState<AggregatedStats>({
     totalStudyTimeToday: 0,
@@ -60,13 +73,73 @@ export default function DashboardPage() {
     weeklyCompletedBlocks: 0,
   });
 
+  const [dailyFocusData, setDailyFocusData] = useState<Record<string, number>>({});
+  const [currentCalendarYear, setCurrentCalendarYear] = useState(new Date().getFullYear());
+
   useEffect(() => {
     setStats(aggregateStudyData(studyLog));
   }, [studyLog]);
 
+  useEffect(() => {
+    const data: Record<string, number> = {};
+    studyLog.forEach(log => {
+      if (log.type === 'study' && log.completed) {
+        try {
+          const date = new Date(log.startTime);
+          if (isNaN(date.getTime())) {
+            console.warn("Invalid date in studyLog for calendar:", log.startTime);
+            return;
+          }
+          const dateStr = format(date, 'yyyy-MM-dd');
+          data[dateStr] = (data[dateStr] || 0) + log.durationMinutes;
+        } catch (e) {
+          console.warn("Error processing date from studyLog for calendar:", log.startTime, e);
+        }
+      }
+    });
+    setDailyFocusData(data);
+  }, [studyLog]);
+
+  const focusedDaysModifier = useMemo(() => {
+    return Object.keys(dailyFocusData)
+      .filter(dateStr => dailyFocusData[dateStr] > 0)
+      .map(dateStr => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day); // month is 0-indexed
+      });
+  }, [dailyFocusData]);
+
+  function CustomDayContent({ date, displayMonth }: DayContentProps) {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const focusTimeMinutes = dailyFocusData[dateStr];
+
+    // Render plain day number for days not in the currently displayed month
+    if (date.getMonth() !== displayMonth.getMonth()) {
+      return <>{format(date, 'd')}</>;
+    }
+
+    const dayNumber = format(date, 'd');
+
+    if (focusTimeMinutes && focusTimeMinutes > 0) {
+      return (
+        <TooltipProvider delayDuration={100}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>{dayNumber}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Focused for {focusTimeMinutes} min.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    return <>{dayNumber}</>;
+  }
+
   const dailyGoalProgress = settings.dailyGoalType === 'blocks' 
-    ? (stats.completedBlocksToday / settings.dailyGoalValue) * 100
-    : (stats.totalStudyTimeToday / (settings.dailyGoalValue * 60)) * 100;
+    ? (settings.dailyGoalValue > 0 ? (stats.completedBlocksToday / settings.dailyGoalValue) * 100 : 0)
+    : (settings.dailyGoalValue > 0 ? (stats.totalStudyTimeToday / (settings.dailyGoalValue * 60)) * 100 : 0);
 
   return (
     <div className="space-y-6">
@@ -133,12 +206,10 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">No achievements unlocked yet. Keep studying!</p>
-            {/* Placeholder for badges */}
           </CardContent>
         </Card>
       </div>
 
-      {/* Placeholder for graphs. Recharts could be used here. */}
       <Card>
         <CardHeader>
           <CardTitle>Productivity Trends (Coming Soon)</CardTitle>
@@ -147,6 +218,37 @@ export default function DashboardPage() {
         <CardContent className="h-64 flex items-center justify-center">
           <p className="text-muted-foreground">Chart will be displayed here.</p>
           <img data-ai-hint="productivity graph" src="https://placehold.co/600x300.png" alt="Placeholder graph" className="opacity-50" />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Focus Calendar ({currentCalendarYear})</span>
+            <div className="space-x-2">
+              <Button variant="outline" size="icon" onClick={() => setCurrentCalendarYear(y => y - 1)} aria-label="Previous year">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => setCurrentCalendarYear(y => y + 1)} aria-label="Next year">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardTitle>
+          <CardDescription>Hover over a day to see your total focus time. Days with focused time are highlighted.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <Calendar
+            key={currentCalendarYear}
+            mode="single" 
+            month={new Date(currentCalendarYear, 0, 1)}
+            numberOfMonths={12}
+            showOutsideDays
+            fixedWeeks
+            components={{ DayContent: CustomDayContent }}
+            modifiers={{ focused: focusedDaysModifier }}
+            modifiersClassNames={{ focused: 'bg-primary/20 rounded-sm font-semibold' }}
+            className="p-0 [&_button[name=previous-month]]:hidden [&_button[name=next-month]]:hidden [&_.rdp-caption_label]:text-lg [&_.rdp-caption_label]:font-medium"
+          />
         </CardContent>
       </Card>
     </div>
