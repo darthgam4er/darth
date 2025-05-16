@@ -1,21 +1,22 @@
+
 "use client";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
-import { Sun, Moon } from "lucide-react";
-import { useTheme } from "next-themes"; // Assuming next-themes is or will be installed
-import { useEffect, useState } from "react";
+// import { Button } from "@/components/ui/button";
+// import { Sun, Moon } from "lucide-react";
+// import { useTheme } from "next-themes"; // Assuming next-themes is or will be installed
+// import { useEffect, useState } from "react";
 
 export default function AppHeader() {
-  const [mounted, setMounted] = useState(false);
+  // const [mounted, setMounted] = useState(false);
   // const { theme, setTheme } = useTheme(); // Placeholder for theme toggle
 
-  useEffect(() => setMounted(true), []);
+  // useEffect(() => setMounted(true), []);
 
   // const toggleTheme = () => {
   //   setTheme(theme === "dark" ? "light" : "dark");
   // };
 
-  if (!mounted) return null;
+  // if (!mounted) return null; // Removed: allow header to be server-rendered
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md sm:px-6">
