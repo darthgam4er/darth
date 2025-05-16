@@ -134,13 +134,27 @@ export default function StudyPage() {
     }
   }, [isActive, endTime, handleTimerEnd, setTimeLeft, setIsActive, setEndTime]);
 
+  // On mount, recalculate timeLeft if timer is active and endTime is set
+  useEffect(() => {
+    if (isActive && endTime) {
+      const newTimeLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+      setTimeLeft(newTimeLeft);
+      if (newTimeLeft === 0) {
+        setIsActive(false);
+        setEndTime(null);
+        handleTimerEnd();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!isActive) {
-        if (mode === 'study') setTimeLeft(settings.studyDuration * 60);
-        else if (mode === 'short_break') setTimeLeft(settings.shortBreakDuration * 60);
-        else if (mode === 'long_break') setTimeLeft(settings.longBreakDuration * 60);
+      if (mode === 'study') setTimeLeft(settings.studyDuration * 60);
+      else if (mode === 'short_break') setTimeLeft(settings.shortBreakDuration * 60);
+      else if (mode === 'long_break') setTimeLeft(settings.longBreakDuration * 60);
     }
-  }, [settings.studyDuration, settings.shortBreakDuration, settings.longBreakDuration, mode, isActive]);
+  }, [settings.studyDuration, settings.shortBreakDuration, settings.longBreakDuration, mode]);
 
   const toggleTimer = () => {
     if (!isActive) { // Resuming
@@ -338,14 +352,14 @@ export default function StudyPage() {
                 <Button onClick={() => setShowWhyStuckDialog(true)} variant="secondary" className="w-full" disabled={showCoinFlipDialog || isActive}>
                   <Lightbulb className="mr-2 h-5 w-5" /> Why Am I Stuck?
                 </Button>
-                 <Button onClick={startTwoMinuteRule} variant="secondary" className="w-full" disabled={showCoinFlipDialog}>
+                <Button onClick={startTwoMinuteRule} variant="secondary" className="w-full" disabled={showCoinFlipDialog}>
                   <Play className="mr-2 h-5 w-5" /> 2-Min Rule
                 </Button>
               </div>
               <div className="flex justify-center">
-                 <Button onClick={resetTimer} variant="destructive" size="lg" className="w-auto" disabled={showCoinFlipDialog}>
-                    <RotateCcw className="mr-2 h-5 w-5" /> Reset All
-                 </Button>
+                <Button onClick={resetTimer} variant="destructive" size="lg" className="w-auto" disabled={showCoinFlipDialog}>
+                  <RotateCcw className="mr-2 h-5 w-5" /> Reset All
+                </Button>
               </div>
               <Separator />
             </div>

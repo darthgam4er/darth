@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltipComponent } from 'recharts';
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltipComponent, Line } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartStyle } from "@/components/ui/chart"; // Added ChartStyle for consistency
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -373,7 +373,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Productivity Trends (Last 7 Days)</CardTitle>
-          <CardDescription>Visual representation of your study patterns over time.</CardDescription>
+          <CardDescription>Visual representation of your study patterns over time. Includes daily study time and a weekly average for better insight.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6 h-[350px]">
           {showProductivityChart ? (
@@ -399,6 +399,7 @@ export default function DashboardPage() {
                   content={<ChartTooltipContent indicator="line" nameKey="date" />}
                 />
                 <Bar dataKey="studyTime" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
+                <Line type="monotone" dataKey="weeklyAverage" stroke="#8884d8" strokeWidth={2} dot={false} />
               </RechartsBarChart>
             </ChartContainer>
           ) : (
@@ -406,51 +407,6 @@ export default function DashboardPage() {
               <Skeleton className="w-full h-32" />
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Focus Calendar ({currentCalendarYear})</span>
-            <div className="space-x-2">
-              <Button variant="outline" size="icon" onClick={() => setCurrentCalendarYear(y => y - 1)} aria-label="Previous year">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={() => setCurrentCalendarYear(y => y + 1)} aria-label="Next year">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardTitle>
-          <CardDescription>Hover over a day to see your total focus time. Days with focused time are highlighted.</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <Calendar
-            key={currentCalendarYear}
-            mode="single" 
-            month={new Date(currentCalendarYear, 0, 1)}
-            numberOfMonths={12}
-            showOutsideDays
-            fixedWeeks
-            components={{ DayContent: CustomDayContent }}
-            modifiers={{ focused: focusedDaysModifier }}
-            modifiersClassNames={{ focused: 'bg-primary/20 rounded-md font-semibold' }}
-            className="p-0 [&_button[name=previous-month]]:hidden [&_button[name=next-month]]:hidden"
-            classNames={{
-              months: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-3",
-              month: "rounded-lg border bg-card p-3 shadow-sm space-y-3",
-              caption: "flex justify-center pt-1.5 pb-1 relative items-center text-lg font-medium",
-              caption_label: "", // Handled by caption style
-              head_row: "flex w-full justify-around",
-              head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
-              row: "flex w-full mt-2 justify-around",
-              cell: "h-8 w-8 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-              day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal rounded-md"),
-              day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-              day_today: "bg-accent text-accent-foreground font-bold rounded-md",
-              day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50",
-            }}
-          />
         </CardContent>
       </Card>
     </div>
