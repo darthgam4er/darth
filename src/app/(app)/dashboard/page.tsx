@@ -14,7 +14,7 @@ import { format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltipComponent } from 'recharts';
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltipContent, ChartStyle } from "@/components/ui/chart"; // Added ChartStyle for consistency
 
 
 const DEFAULT_TIMER_SETTINGS: TimerSettings = {
@@ -106,18 +106,16 @@ export default function DashboardPage() {
   
   useEffect(() => {
     const today = startOfDay(new Date());
-    // Ensure we get 7 distinct days even if today is early in the week for 'EEE' format
     const referenceDayForInterval = subDays(today, 6); 
     const lastSevenDaysInterval = eachDayOfInterval({
       start: referenceDayForInterval,
       end: today,
     });
 
-    // Make sure we always have 7 days, even if interval is shorter due to edge cases
     const dateEntries = lastSevenDaysInterval.slice(-7).map(day => ({
-      date: format(day, 'EEE'), // Format as Mon, Tue, etc.
+      date: format(day, 'EEE'), 
       studyTime: 0,
-      fullDate: format(day, 'yyyy-MM-dd') // for matching with log
+      fullDate: format(day, 'yyyy-MM-dd') 
     }));
 
 
@@ -146,26 +144,27 @@ export default function DashboardPage() {
       .filter(dateStr => dailyFocusData[dateStr] > 0)
       .map(dateStr => {
         const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day); // month is 0-indexed
+        return new Date(year, month - 1, day); 
       });
   }, [dailyFocusData]);
 
   function CustomDayContent({ date, displayMonth }: DayContentProps) {
     const dateStr = format(date, 'yyyy-MM-dd');
     const focusTimeMinutes = dailyFocusData[dateStr];
+    const dayNumber = format(date, 'd');
+
+    const content = <div className="flex items-center justify-center h-full w-full">{dayNumber}</div>;
 
     if (date.getMonth() !== displayMonth.getMonth()) {
-      return <>{format(date, 'd')}</>;
+      return content; // Render only day number for outside days
     }
-
-    const dayNumber = format(date, 'd');
 
     if (focusTimeMinutes && focusTimeMinutes > 0) {
       return (
         <TooltipProvider delayDuration={100}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span>{dayNumber}</span>
+              {content}
             </TooltipTrigger>
             <TooltipContent>
               <p>Focused for {focusTimeMinutes} min.</p>
@@ -174,7 +173,7 @@ export default function DashboardPage() {
         </TooltipProvider>
       );
     }
-    return <>{dayNumber}</>;
+    return content;
   }
 
   const dailyGoalProgress = settings.dailyGoalType === 'blocks' 
@@ -318,11 +317,27 @@ export default function DashboardPage() {
             fixedWeeks
             components={{ DayContent: CustomDayContent }}
             modifiers={{ focused: focusedDaysModifier }}
-            modifiersClassNames={{ focused: 'bg-primary/20 rounded-sm font-semibold' }}
-            className="p-0 [&_button[name=previous-month]]:hidden [&_button[name=next-month]]:hidden [&_.rdp-caption_label]:text-lg [&_.rdp-caption_label]:font-medium"
+            modifiersClassNames={{ focused: 'bg-primary/20 rounded-md font-semibold' }}
+            className="p-0 [&_button[name=previous-month]]:hidden [&_button[name=next-month]]:hidden"
+            classNames={{
+              months: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-3",
+              month: "rounded-lg border bg-card p-3 shadow-sm space-y-3",
+              caption: "flex justify-center pt-1.5 pb-1 relative items-center text-lg font-medium",
+              caption_label: "", // Handled by caption style
+              head_row: "flex w-full justify-around",
+              head_cell: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
+              row: "flex w-full mt-2 justify-around",
+              cell: "h-8 w-8 text-center text-sm p-0 relative first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+              day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal rounded-md"),
+              day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+              day_today: "bg-accent text-accent-foreground font-bold rounded-md",
+              day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+            }}
           />
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    
