@@ -1,8 +1,7 @@
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { BarChart3, Clock, Zap, Target, CheckCircle, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, Clock, Zap, Target, CheckCircle, TrendingUp, ChevronLeft, ChevronRight, Lock, Shield, Skull, Sparkles, Crown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { TimerSettings, StudySession } from '@/lib/types';
@@ -15,7 +14,8 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltipComponent } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartStyle } from "@/components/ui/chart"; // Added ChartStyle for consistency
-
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 const DEFAULT_TIMER_SETTINGS: TimerSettings = {
   studyDuration: 60, shortBreakDuration: 10, longBreakDuration: 30, cyclesPerSuperBlock: 4,
@@ -183,6 +183,82 @@ export default function DashboardPage() {
   const showProductivityChart = productivityChartData.some(d => d.studyTime > 0);
   const chartConfig = { studyTime: { label: "Study Time (min)", color: "hsl(var(--primary))" } };
 
+  const achievements = [
+    {
+      id: 'noob-warrior',
+      name: 'Noob Warrior',
+      icon: <span className="text-pink-500"><svg width="20" height="20"><circle cx="10" cy="10" r="8" fill="currentColor" /></svg></span>,
+      color: 'text-orange-400',
+      tier: 'Bronze',
+      unlocked: stats.totalStudyTimeToday >= 60,
+      progress: Math.min(stats.totalStudyTimeToday / 60, 1),
+      description: 'Study for 1 hour in a day.'
+    },
+    {
+      id: 'apprentice-fighter',
+      name: 'Apprentice Fighter',
+      icon: <span className="text-purple-500"><svg width="20" height="20"><rect x="4" y="4" width="12" height="12" fill="currentColor" /></svg></span>,
+      color: 'text-orange-400',
+      tier: 'Bronze',
+      unlocked: stats.completedBlocksToday >= 10,
+      progress: Math.min(stats.completedBlocksToday / 10, 1),
+      description: 'Complete 10 study blocks in a day.'
+    },
+    {
+      id: 'skilled-hunter',
+      name: 'Skilled Hunter',
+      icon: <Shield className="text-blue-400" />,
+      color: 'text-slate-400',
+      tier: 'Silver',
+      unlocked: stats.weeklyStudyTime >= 300,
+      progress: Math.min(stats.weeklyStudyTime / 300, 1),
+      description: 'Study for 5 hours in a week.'
+    },
+    {
+      id: 'draugr-slayer',
+      name: 'Draugr Slayer',
+      icon: <Skull className="text-slate-400" />,
+      color: 'text-slate-400',
+      tier: 'Silver',
+      unlocked: stats.weeklyCompletedBlocks >= 50,
+      progress: Math.min(stats.weeklyCompletedBlocks / 50, 1),
+      description: 'Complete 50 study blocks in a week.'
+    },
+    {
+      id: 'runic-master',
+      name: 'Runic Master',
+      icon: <Sparkles className="text-yellow-400" />,
+      color: 'text-yellow-400',
+      tier: 'Gold',
+      unlocked: currentStreak >= 7,
+      progress: Math.min(currentStreak / 7, 1),
+      description: 'Maintain a 7-day study streak.'
+    },
+    {
+      id: 'valkyrie-hunter',
+      name: 'Valkyrie Hunter',
+      icon: <Crown className="text-yellow-400" />,
+      color: 'text-yellow-400',
+      tier: 'Gold',
+      unlocked: stats.completedBlocksToday >= 25,
+      progress: Math.min(stats.completedBlocksToday / 25, 1),
+      description: 'Complete 25 study blocks in a day.'
+    },
+    {
+      id: 'god-of-war',
+      name: 'God of War',
+      icon: <Zap className="text-blue-400" />,
+      color: 'text-blue-400',
+      tier: 'Platinum',
+      unlocked: stats.totalStudyTimeToday >= 180 && currentStreak >= 30,
+      progress: Math.min((stats.totalStudyTimeToday / 180 + currentStreak / 30) / 2, 1),
+      description: 'Study for 3 hours in a day and maintain a 30-day streak.'
+    },
+  ];
+
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
+
+  const [selected, setSelected] = React.useState(achievements[0]);
 
   return (
     <div className="space-y-6">
@@ -239,17 +315,58 @@ export default function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
-              Recent Achievements
-            </CardTitle>
-            <CardDescription>Milestones and badges earned (Coming Soon).</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">No achievements unlocked yet. Keep studying!</p>
-          </CardContent>
+
+        <Card className="lg:col-span-2">
+          <div className="flex flex-col md:flex-row">
+            <div className="w-full md:w-1/2 border-r border-border/30">
+              <div className="flex items-center justify-between px-6 pt-6 pb-2">
+                <h2 className="font-bold text-lg tracking-wide flex items-center gap-2">
+                  <span className="text-yellow-400">&#x1F396;</span> ACHIEVEMENTS
+                </h2>
+                <span className="text-xs text-muted-foreground">{unlockedCount}/{achievements.length} Completed</span>
+              </div>
+              <div>
+                {achievements.map(a => (
+                  <div
+                    key={a.id}
+                    className={`flex items-center px-6 py-3 border-b border-border/20 cursor-pointer transition bg-background/80 hover:bg-accent/30 ${selected.id === a.id ? 'bg-accent/40' : ''}`}
+                    onClick={() => setSelected(a)}
+                  >
+                    <div className="mr-3">{a.icon}</div>
+                    <div className="flex-1">
+                      <div className={`font-semibold ${a.unlocked ? '' : 'text-muted-foreground'} flex items-center gap-2`}>{a.name} <span className={`text-xs ${a.color}`}>{a.tier}</span></div>
+                      <Progress value={a.progress * 100} className={`h-2 mt-1 ${a.unlocked ? 'bg-primary' : 'bg-muted'}`} />
+                    </div>
+                    <div className="ml-3">
+                      {a.unlocked ? <CheckCircle className="text-green-500 w-5 h-5" /> : <Lock className="text-muted-foreground w-5 h-5" />}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-8">
+              <div className="flex items-center gap-2 mb-2">
+                {selected.icon}
+                <span className="font-bold text-2xl">{selected.name}</span>
+              </div>
+              <div className={`text-sm mb-2 ${selected.color}`}>{selected.tier} Achievement</div>
+              <div className="bg-card border border-border/30 rounded-lg p-4 w-full max-w-xs mb-4">
+                <div className="mb-2 font-medium">{selected.description}</div>
+                <div className="text-xs text-muted-foreground mb-1">Progress</div>
+                <Progress value={selected.progress * 100} className="h-2" />
+              </div>
+              {!selected.unlocked && (
+                <button className="mt-4 px-6 py-2 rounded bg-destructive text-white font-semibold flex items-center gap-2" disabled>
+                  <Lock className="w-4 h-4" /> Complete Achievement
+                </button>
+              )}
+              {selected.unlocked && (
+                <button className="mt-4 px-6 py-2 rounded bg-green-600 text-white font-semibold flex items-center gap-2" disabled>
+                  <CheckCircle className="w-4 h-4" /> Achievement Unlocked
+                </button>
+              )}
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -279,14 +396,14 @@ export default function DashboardPage() {
                 />
                 <RechartsTooltipComponent
                   cursor={{ fill: 'hsl(var(--muted))', radius: 'var(--radius)' }}
-                  content={<ChartTooltipContent indicator="bar" nameKey="date" />}
+                  content={<ChartTooltipContent indicator="line" nameKey="date" />}
                 />
                 <Bar dataKey="studyTime" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={40} />
               </RechartsBarChart>
             </ChartContainer>
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground text-center">Not enough data to display productivity trends yet. <br/>Log some completed study sessions!</p>
+              <Skeleton className="w-full h-32" />
             </div>
           )}
         </CardContent>
@@ -331,7 +448,7 @@ export default function DashboardPage() {
               day: cn(buttonVariants({ variant: "ghost" }), "h-8 w-8 p-0 font-normal rounded-md"),
               day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
               day_today: "bg-accent text-accent-foreground font-bold rounded-md",
-              day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground",
+              day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50",
             }}
           />
         </CardContent>
@@ -340,4 +457,4 @@ export default function DashboardPage() {
   );
 }
 
-    
+

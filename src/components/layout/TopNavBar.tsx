@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -8,6 +7,16 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel
+} from '@/components/ui/dropdown-menu';
 
 interface NavItemProps {
   href: string;
@@ -47,11 +56,16 @@ const NavItem = ({ href, icon, label, disabled }: NavItemProps) => {
 export default function TopNavBar() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
 
   useEffect(() => setMounted(true), []);
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+    toast({
+      title: `Theme changed`,
+      description: `Switched to ${theme === "dark" ? "light" : "dark"} mode.`,
+    });
   };
 
   return (
@@ -67,10 +81,10 @@ export default function TopNavBar() {
         <NavItem href="/study" icon={<Home className="h-4 w-4" />} label="Study Timer" />
         <NavItem href="/dashboard" icon={<BarChart3 className="h-4 w-4" />} label="Dashboard" />
         <NavItem href="/settings" icon={<Settings className="h-4 w-4" />} label="Settings" />
-        <NavItem href="#" icon={<Zap className="h-4 w-4" />} label="Streaks" disabled />
+        <NavItem href="/streaks" icon={<Zap className="h-4 w-4" />} label="Streaks" />
       </nav>
       
-      <div className="flex items-center">
+      <div className="flex items-center gap-2">
         {mounted ? (
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -79,6 +93,24 @@ export default function TopNavBar() {
         ) : (
           <div className="h-10 w-10" /> // Placeholder to prevent layout shift
         )}
+        {/* User Profile Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" aria-label="Open user menu">
+              <Avatar>
+                <AvatarFallback>YY</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Logout</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {/* Mobile Menu Trigger (optional, can be added later) */}
         {/* <Button variant="ghost" size="icon" className="md:hidden">
           <Menu className="h-5 w-5" />
