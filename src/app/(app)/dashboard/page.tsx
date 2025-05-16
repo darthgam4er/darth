@@ -11,7 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DayContentProps } from 'react-day-picker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, subDays, eachDayOfInterval, startOfDay } from 'date-fns';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltipComponent } from 'recharts';
 import { ChartContainer, ChartTooltipContent, ChartStyle } from "@/components/ui/chart"; // Added ChartStyle for consistency
